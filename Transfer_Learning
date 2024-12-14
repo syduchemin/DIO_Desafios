@@ -1,0 +1,46 @@
+Transfer_Learning
+
+Projeto de Transfer Learning em Python
+
+O projeto consiste em aplicar o método de Transfer Learning em uma rede de Deep Learning na linguagem Python no ambiente COLAB. 
+
+Para exemplo, utilizaremos o seguinte projeto que realiza Transfer Learning com o Dataset do MNIST:  
+
+https://colab.research.google.com/github/kylemath/ml4a-guides/blob/master/notebooks/transfer-learning.ipynb
+
+O dataset utilizado engloba duas classes: gatos e cachorros. Uma descrição da base de dados pode ser visualizada neste link: https://www.tensorflow.org/datasets/catalog/cats_vs_dogs.  Já o dataset para download pode ser acessado por meio deste outro link: https://www.microsoft.com/en-us/download/details.aspx?id=54765.
+
+Observações: Neste projeto, você pode usar sua própria base de dados (exemplo: fotos suas, dos seus pais, dos seus amigos, dos seus animais domésticos, etc), o exemplo de gatos e cachorros, pode ser substituído por duas outras classes do seu interesse. O Dataset criado em nosso projeto anterior, pode ser utilizado agora. 
+
+O projeto deve ser enviado para o GitHub da DIO: https://github.com/digitalinnovationone. 
+
+
+
+Link do Projeto final:
+https://colab.research.google.com/drive/1rUwBtT-NB5O8oxosOKH7BenIanCAn7rr#scrollTo=ftWl8yUVHXo6
+
+Descrição:
+1.	Implementei um modelo de reconhecimento de imagens pelo método Transfer Learning em uma rede de Deep Learning na linguagem Python no ambiente COLAB. 
+2.	A base de dados é um conjunto de 1000 fotos de cachorros [Dog] e 1000 fotos de gatos [Cat], a partir da base de dados kagglecatsanddogs_5340.zip, apontada no link da descrição do problema.
+3.	As pastas [Cat] e [Dog] contêm as classes:
+['archive/PetImages/Cat', 'archive/PetImages/Dog']
+4.	A Base de dados está hospedada numa nuvem MSAzure que utilizo para publicar os meus projetos pessoais:
+https://safetycross.azurewebsites.net/app_dev/colab/archive.zip
+5.	Como a base original é muito grande (25 mil imagens), estourou a RAM no COLAB, e decidi reduzir para mil imagens de cada classe (mil de Cachorros e mil de Gatos)
+6.	A base de Gatos [Cat] estava corrompida com duas imagens 666.jpg e 885.jpg que não estavam sendo lidas pelo script. Substituí essas duas imagens pelas imagens 1000.jpg e 1001.jpg da mesma base de Gatos [Cat], e o script funcionou.
+7.	Treinei o modelo com 10 épocas, mas estava muito lento, então adquiri créditos (Compute Units) no COLAB, e usei um Acelerador de Hardware mais robusto T4 GPU
+8.	O modelo final identifica gatos e cachorros com acurácia superior a 91%
+Test loss: 0.2679247558116913
+Test accuracy: 0.9133333563804626
+9.	Para acessar o modelo, basta apontar para uma das mil fotos dentro das pastas [Dog] e [Cat]:
+•	Gatos:
+img, x = get_image('archive/PetImages/Cat/320.jpg')
+probabilities = model_new.predict(x)
+print(probabilities)
+resultado: 100% Cat // [1.0000000e+00 5.9458063e-19]
+ 
+•	Cachorros:
+img, x = get_image('archive/PetImages/Dog/232.jpg')
+probabilities = model_new.predict(x)
+print(probabilities)
+resultado: 100% Dog // [4.558999e-19 1.000000e+00]
