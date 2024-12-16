@@ -1,0 +1,68 @@
+import struct
+
+def read_bmp(file_path):
+    with open(file_path, 'rb') as f:
+        # Read BMP header
+        header = f.read(54)  # BMP header is 54 bytes
+        width, height = struct.unpack('<ii', header[18:26])  # Extract width and height
+        row_padded = (width * 3 + 3) & ~3  # Ensure rows are padded to multiples of 4 bytes
+        pixels = []
+
+        # Read pixel data
+        for y in range(height):
+            row = []
+            for x in range(width):
+                b, g, r = struct.unpack('BBB', f.read(3))  # BMP stores in BGR order
+                row.append((r, g, b))
+            pixels.append(row)
+            f.read(row_padded - width * 3)  # Skip padding
+        return header, pixels, width, height
+
+def write_bmp(file_path, header, pixels, width, height):
+    with open(file_path, 'wb') as f:
+        f.write(header)  # Write BMP header
+        row_padded = (width * 3 + 3) & ~3
+        for row in pixels:
+            for r, g, b in row:
+                f.write(struct.pack('BBB', b, g, r))  # Write in BGR order
+            f.write(b'\x00' * (row_padded - width * 3))  # Add padding
+
+def convert_to_grayscale(pixels):
+    grayscale_pixels = []
+    for row in pixels:
+        gray_row = []
+        for r, g, b in row:
+            # Use the standard luminosity formula
+            gray = int(0.3 * r + 0.59 * g + 0.11 * b)
+            gray_row.append((gray, gray, gray))  # Grayscale: RGB values are the same
+        grayscale_pixels.append(gray_row)
+    return grayscale_pixels
+
+def convert_to_black_and_white(pixels, threshold=128):
+    bw_pixels = []
+    for row in pixels:
+        bw_row = []
+        for r, g, b in row:
+            # Black and white based on threshold
+            bw = 255 if r > threshold else 0
+            bw_row.append((bw, bw, bw))  # Black or white
+        bw_pixels.append(bw_row)
+    return bw_pixels
+
+# Paths
+input_file = 'input_image.bmp'  # Replace with your BMP file
+grayscale_file = 'grayscale_image.bmp'
+bw_file = 'black_and_white_image.bmp'
+
+# Read the BMP file
+header, pixels, width, height = read_bmp(input_file)
+
+# Convert to grayscale
+grayscale_pixels = convert_to_grayscale(pixels)
+write_bmp(grayscale_file, header, grayscale_pixels, width, height)
+print(f"Grayscale image saved as {grayscale_file}")
+
+# Convert to black and white
+bw_pixels = convert_to_black_and_white(grayscale_pixels)
+write_bmp(bw_file, header, bw_pixels, width, height)
+print(f"Black and white image saved as {bw_file}")
