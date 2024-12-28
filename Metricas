@@ -1,3 +1,14 @@
-COLAB Notebook:
+Solução no COLAB Notebook:
 https://colab.research.google.com/drive/1iuj3HUjsYEEM7eiXlm8nvqKVszBLOkJd#scrollTo=glPEglrYGV6f
+
+Este exercício é baseado no tutorial do COLAB "Understanding Metrics": https://colab.research.google.com/github/goswami-rahul/machine-learning/blob/master/UnderstandingMetrics.ipynb#scrollTo=Igzm5LZDzsNZ
+
+A metodologia consiste em calcular a matriz de confusão, e a partir dela, calcular as principais métricas: 
+1. SENSIBILIDADE 
+2. ESPECIFICIDADE 
+3. ACURÁCIA 
+4. PRECISÃO 
+5. F-score
+
+Finalmente é feita a plotagem da curva ROC (Receiver Operating Characteristic)
 
