@@ -1,0 +1,328 @@
+See the COLAB Implementation here:
+https://colab.research.google.com/drive/1u4-fW4CQewQ_EKp0I8RzusVwEW5jYYnh#scrollTo=Qz-7ynwhfkil
+
+Change RUNTIME TYPE to: T4 GPU
+
+1.Face Identification: Spotting a human face in an image.
+Steps:
+  Load Libraries
+  Load Image URL
+  Create Boxes around faces (OpenCV)
+
+2.Face Recognition: Determining which individual the face belongs to.
+In this project: we use the image recognition functionality in the 'face-recognition' python library.
+
+Steps:
+  Capture the face encodings of Known images.
+  Capture the face encodings of the Unknown images.
+  Compare the two and see if known image encodings are present in the images with unknown faces.
+
+Before starting COLAB:
+Upload images.zip into COLAB file folder.
+
+images.zip structure:
+images
+  |_kown-faces
+      |_JohnDoe
+            |_JohnDoe-1.jpg
+            |_JohnDoe-2.jpg
+            |_JohnDoe-3.jpg
+      |_JaneDoe
+            |_JaneDoe-1.jpg
+            |_JaneDoe-2.jpg
+            |_JaneDoe-3.jpg
+            |_JaneDoe-4.jpg
+  |_unkown-faces
+      |_Picture1.jpg
+      |_Picture2.jpg
+      |_Picture3.jpg
+
+
+1. Part 1 - Face Identification
+
+Code Cell:
+    import imutils
+    import numpy as np
+    import cv2
+    from google.colab.patches import cv2_imshow
+    from IPython.display import display, Javascript
+    from google.colab.output import eval_js
+    from base64 import b64decode
+
+Code Cell:
+    def take_photo(filename='photo.jpg', quality=0.8):
+      js = Javascript('''
+        async function takePhoto(quality) {
+          const div = document.createElement('div');
+          const capture = document.createElement('button');
+          capture.textContent = 'Capture';
+          div.appendChild(capture);
+    
+          const video = document.createElement('video');
+          video.style.display = 'block';
+          const stream = await navigator.mediaDevices.getUserMedia({video: true});
+    
+          document.body.appendChild(div);
+          div.appendChild(video);
+          video.srcObject = stream;
+          await video.play();
+    
+          // Resize the output to fit the video element.
+          google.colab.output.setIframeHeight(document.documentElement.scrollHeight, true);
+    
+          // Wait for Capture to be clicked.
+          await new Promise((resolve) => capture.onclick = resolve);
+    
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          canvas.getContext('2d').drawImage(video, 0, 0);
+          stream.getVideoTracks()[0].stop();
+          div.remove();
+          return canvas.toDataURL('image/jpeg', quality);
+        }
+        ''')
+      display(js)
+      data = eval_js('takePhoto({})'.format(quality))
+      binary = b64decode(data.split(',')[1])
+      with open(filename, 'wb') as f:
+        f.write(binary)
+      return filename
+
+Code Cell:
+    import requests
+    
+    # URL of the image
+    #image_url = 'https://www.usatoday.com/gcdn/-mm-/8ea45a194518644a1e49f68d1118a5705f65fac6/c=0-131-2993-1822/local/-/media/2018/04/23/USATODAY/USATODAY/636600652740112659-AP-Barbara-Bush.jpg?width=1733&height=980&fit=crop&format=pjpg&auto=webp'
+    
+    #League of Justice
+    image_url='https://m.media-amazon.com/images/M/MV5BOTU3NzM5MTIxN15BMl5BanBnXkFtZTgwOTcxMTgxNDM@._V1_FMjpg_UX2048_.jpg'
+    
+    # Fetch the image from the URL
+    response = requests.get(image_url)
+    
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Save the image as a binary file
+        with open('image_binary.jpg', 'wb') as file:
+            file.write(response.content)
+        print("Image saved as 'image_binary.jpg'")
+    else:
+        print(f"Failed to download image. Status code: {response.status_code}")
+
+Code Cell:
+    #image_file = take_photo() # Use only for web cams
+    image_file = 'image_binary.jpg';
+
+Code Cell:
+    from IPython.display import Image, display
+    
+    # Display the saved image
+    display(Image('image_binary.jpg'))
+
+Code Cell:
+    #image = cv2.imread(image_file, cv2.IMREAD_UNCHANGED)
+    image = cv2.imread(image_file)
+  
+    # resize it to have a maximum width of 1500 pixels
+    image = imutils.resize(image, width=1500)
+    (h, w) = image.shape[:2]
+    print(w,h)
+    cv2_imshow(image)
+
+Code Cell:
+    !wget -N https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt
+    !wget -N https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel
+
+Code Cell:
+    print("[INFO] loading model...")
+    prototxt = 'deploy.prototxt'
+    model = 'res10_300x300_ssd_iter_140000.caffemodel'
+    net = cv2.dnn.readNetFromCaffe(prototxt, model)
+
+Code Cell:
+    # resize it to have a maximum width of 1500 pixels
+    image = imutils.resize(image, width=1500)
+    blob = cv2.dnn.blobFromImage(cv2.resize(image, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
+
+Code Cell:
+    print("[INFO] computing object detections...")
+    net.setInput(blob)
+    detections = net.forward()
+
+Code Cell:
+    for i in range(0, detections.shape[2]):
+    	# extract the confidence (i.e., probability) associated with the prediction
+    	confidence = detections[0, 0, i, 2]
+    
+    	# filter out weak detections by ensuring the `confidence` is
+    	# greater than the minimum confidence threshold
+    	if confidence > 0.5:
+    		# compute the (x, y)-coordinates of the bounding box for the object
+    		box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+    		(startX, startY, endX, endY) = box.astype("int")
+    		# draw the bounding box of the face along with the associated probability
+    		text = "{:.2f}%".format(confidence * 100)
+    		y = startY - 10 if startY - 10 > 10 else startY + 10
+    		cv2.rectangle(image, (startX, startY), (endX, endY), (0, 0, 255), 2)
+    		cv2.putText(image, text, (startX, y),
+    			cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
+
+Code Cell:
+      cv2_imshow(image)
+
+
+========Part 2
+2. Face Classification
+
+
+Code Cell:
+    #Install library
+    !pip install face_recognition
+
+Code Cell:
+    !unzip images.zip
+
+Code Cell:
+    #Library imports
+    import face_recognition
+    import cv2
+    import os
+    from google.colab.patches import cv2_imshow
+    import numpy as np
+
+Code Cell:
+    #Set Parameters
+    KNOWN_FACES_DIR = "images/known-faces/"
+    UNKNOWN_FACES_DIR ="images/unknown-faces/"
+    TOLERANCE =0.6
+    FRAME_THICKNESS = 3
+    FONT_THICKNESS= 2
+    FONT = cv2.FONT_HERSHEY_SIMPLEX
+    MODEL ="cnn" #hog or cnn
+    known_faces=[]
+    known_names=[]
+    showImages=[]
+    facial_features_list=[]
+
+Code Cell:
+    #Reading known faces from known faces folders
+    for name in os.listdir(KNOWN_FACES_DIR):
+    
+      if not name.startswith('.'):
+        # Next we load every file of faces of known person
+        for filename in os.listdir(f'{KNOWN_FACES_DIR}/{name}'):
+    
+          # Load an image
+          if not filename.startswith('.'):
+            image = face_recognition.load_image_file(f'{KNOWN_FACES_DIR}/{name}/{filename}')
+    
+          # Face encoding captures 128 points on the face and stores them in array
+          # Always returns a list of found faces, for this purpose we take first face only (assuming one face per image as you can't be twice on one image)
+          encoding = face_recognition.face_encodings(image)[0]
+    
+          # Append encodings and name
+          known_faces.append(encoding)
+          known_names.append(name)
+
+Code Cell:
+    # Returns (R, G, B) from name for unique border color for an individual
+    def name_to_color(name):
+      # Take 3 first letters, tolower()
+      # lowercased character ord() value rage is 97 to 122, substract 97, multiply by 8
+      color = [(ord(c.lower())-97)*8 for c in name[:3]]
+      return color
+
+Code Cell:
+    def resize(image,window_height = 500):
+        aspect_ratio = float(image.shape[1])/float(image.shape[0])
+        window_width = window_height/aspect_ratio
+        image = cv2.resize(image, (int(window_height),int(window_width)))
+        return image
+
+code Cell:
+    showImages=[]
+    # Now let's loop over a folder of faces we want to label
+    for filename in os.listdir(UNKNOWN_FACES_DIR):
+    
+      # Load image
+      print(f'\nFilename {filename}', end='')
+      if not filename.startswith('.'):
+        image = face_recognition.load_image_file(f'{UNKNOWN_FACES_DIR}/{filename}')
+    
+      image = resize(image, 700)
+    
+      # Face Locations returns coordinates of points where the face is located in the image.
+      locations = face_recognition.face_locations(image, model=MODEL)
+    
+      # Now since we know locations, we can pass them to face_encodings as second argument
+      # Without that it will search for faces once again slowing down whole process
+      encodings = face_recognition.face_encodings(image, locations)
+    
+      # We passed our image through face_locations and face_encodings, so we can modify it
+      # First we need to convert it from RGB to BGR because BGR is the standard color model used in cv2 for historical reasons
+      image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    
+      #Count the number of faces in the image
+      print(f"\nThere are {len(encodings)}(s) faces in the image")
+    
+        #We now compare the new faces found to the known_faces
+      #It checks if the new unknown face matches any one of the three known faces images
+      for face_encoding, face_location in zip(encodings, locations):
+    
+        # We use compare_faces (but might use face_distance as well)
+        # Returns array of True/False values in order of passed known_faces
+    
+        results = face_recognition.compare_faces(known_faces, face_encoding, TOLERANCE)
+        print(results)
+    
+        # Since order is being preserved, we check if any face was found then grab index
+        # then label (name) of first matching known face withing a tolerance
+        match = None
+        if True in results:  # If at least one is true, get a name of first of found labels
+          match = known_names[results.index(True)]
+          match = match.replace("_"," ")
+          print(f' - {match} from {results}')
+    
+          # Each location contains positions in order: top, right, bottom, left
+          top_left = (face_location[3], face_location[0])
+          bottom_right = (face_location[1], face_location[2])
+    
+          # Get color by name using our fancy function
+          color = name_to_color(match)
+    
+          # Paint frame
+          cv2.rectangle(image, top_left, bottom_right, color, FRAME_THICKNESS)
+    
+          # Now we need smaller, filled frame below for a name
+          # This time we use bottom in both corners - to start from bottom and move 50 pixels down
+          top_left = (face_location[3], face_location[2])
+          bottom_right = (face_location[1], face_location[2] + 22)
+    
+          # Paint frame
+          cv2.rectangle(image, top_left, bottom_right, color, cv2.FILLED)
+    
+          # Wite a name
+          cv2.putText(image, match, (face_location[3] + 10, face_location[2] + 15), FONT, 0.5, (200, 200, 200), FONT_THICKNESS)
+    
+          # Resize image
+          #image=cv2.resize(image, (int(image.shape[1]*0.8), int(image.shape[0]*0.8)))
+    
+      image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+      # Show image
+      showImages.append(image)
+
+Code Cell:
+    #Using Matplot lib for proper presentation of the images
+    from matplotlib import pyplot as plt
+    
+    columns=4
+    rows= int(np.ceil(len(showImages)/columns))
+    fig, axs=plt.subplots(nrows=rows, ncols=columns, figsize=(30,17))
+    
+    for i in range(rows*columns):
+      if (i<len(showImages)):
+        axs.flat[i].imshow(showImages[i])
+      axs.flat[i].axis('off')
+    
+    fig.tight_layout()
