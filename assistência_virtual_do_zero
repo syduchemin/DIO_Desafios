@@ -1,0 +1,139 @@
+This Project is hosted in COLAB at:
+https://colab.research.google.com/drive/1JXxIju6KsxBdAfSDdU9rv-rCIZbuldgy#scrollTo=GdC2KpnkP_gC
+
+Hard Work was done mostly by ChatGPT.
+Full integration done by myself.
+
+Because COLAB runs in a remote environment, we cannot record or listen to voice. 
+We decided to develop the following approach:
+
+1) TEXT TO SPEECH
+A text prompt will generate a voice file
+
+2) SPEECH TO TEXT
+The voice file is translated to text.
+If the text contains a trigger word, this will trigger an action. 
+Our action is to supply a link to open the browser. Again, COLAB runs in a remote environment, it can't open a browser, this is why we asked colab to supply a link.
+
+
+1. Text to Speech
+Since Colab cannot record audio directly because it is hosted in a remote environment, you can you can save the speech as an audio file and download it for playback.
+
+Then, we can generate an audio file, and upload it to be translated into a voice command, using speech recognition.
+
+Code Cel:
+  !pip install gTTS
+
+Code Cell:
+  from gtts import gTTS
+  from IPython.display import Audio
+  
+  def text_to_speech(text, lang="en"):
+      tts = gTTS(text=text, lang=lang)
+      tts.save("output.mp3")
+      return "output.mp3"
+  
+  text = "Hello, please open BROWSER."
+  audio_file = text_to_speech(text)
+
+Code Cell:
+  # Play the Audio in COLAB
+  Audio(audio_file)
+
+Code Cell:
+  #Download the audio file:
+  from google.colab import files
+  files.download(audio_file)
+
+
+2. Speech to Text
+Now that we have an audio file, we can use it to trigger an action, using Speech Recognition.
+
+
+Code Cell:
+  !pip install SpeechRecognition
+
+Code Cell:
+  !apt-get install portaudio19-dev -y
+
+Code Cell:
+  !pip install PyAudio
+
+Code Cell:
+  import pyaudio
+  print("PyAudio installed successfully!")
+
+Code Cell:
+  import speech_recognition as sr
+  print("SpeechRecognition library installed and imported successfully!")
+
+Code Cell:
+  !pip install pydub
+  !apt-get install ffmpeg -y
+
+Upload MP3 File from your computer:
+
+Code Cell:
+  from google.colab import files
+  audio_file = files.upload()
+
+Use pydub to convert the MP3 file to a WAV file:
+
+Code Cell:
+  from pydub import AudioSegment
+  
+  def convert_mp3_to_wav(mp3_file, wav_file):
+      audio = AudioSegment.from_mp3(mp3_file)
+      audio.export(wav_file, format="wav")
+      return wav_file
+  
+  mp3_file = list(audio_file.keys())[0]  # Replace with your MP3 file path
+  wav_file = "output.wav"
+  convert_mp3_to_wav(mp3_file, wav_file)
+
+Code Cell:
+  import speech_recognition as sr
+  
+  def convert_voice_to_text(audio_file_path):
+      recognizer = sr.Recognizer()
+      with sr.AudioFile(audio_file_path) as source:
+          audio = recognizer.record(source)
+          try:
+              return recognizer.recognize_google(audio)
+          except sr.UnknownValueError:
+              return "Could not understand the audio."
+          except sr.RequestError as e:
+              return f"API error: {e}"
+  
+  file_path = 'output.wav'
+  text_to_execute = convert_voice_to_text(file_path)
+  print("Transcribed Text:", text_to_execute)
+
+Finally process the text for a specific voice command:
+
+Code Cell:
+  import webbrowser
+  
+  from IPython.display import HTML
+  
+  def open_url_in_colab(url):
+      display(HTML(f'<a href="{url}" target="_blank">Click here to open {url}</a>'))
+  
+  
+  def process_text(text):
+      # Define the word to detect
+      trigger_word = "browser"
+  
+      # Check if the trigger word exists in the text (case-insensitive)
+      if trigger_word.lower() in text.lower():
+          print("Trigger word detected! Opening URL...")
+          open_url_in_colab("https://www.google.com")
+      else:
+          print("No trigger word found.")
+  
+  
+  
+  # Example usage
+  text = text_to_execute
+  process_text(text)
+
